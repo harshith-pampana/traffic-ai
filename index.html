@@ -1,172 +1,172 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>AI Autonomous Driving Case Study</title>
+    <title>AI Autonomous Urban Simulation</title>
     <style>
-        body { margin: 0; background: #1a1a2e; color: #00fff2; font-family: 'Segoe UI', sans-serif; display: flex; overflow: hidden; }
-        #sidebar { width: 350px; padding: 25px; background: #16213e; border-right: 2px solid #0f3460; height: 100vh; box-sizing: border-box; display: flex; flex-direction: column; gap: 15px; }
-        canvas { background: #1b1b1b; flex-grow: 1; cursor: crosshair; }
-        .card { background: #0f3460; padding: 15px; border-radius: 10px; border-left: 5px solid #00fff2; }
-        .log { flex-grow: 1; background: #000; padding: 10px; font-family: monospace; font-size: 11px; color: #00ff00; overflow-y: auto; border: 1px solid #00fff2; }
-        button { width: 100%; padding: 12px; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn-main { background: #00fff2; color: #16213e; }
-        .btn-alt { background: #e94560; color: white; margin-top: 5px; }
-        h2 { margin: 0; font-size: 1.4em; letter-spacing: 1px; }
+        body { margin: 0; background: #1a1a2e; color: #00fff2; font-family: 'Courier New', monospace; display: flex; overflow: hidden; }
+        #sidebar { width: 340px; padding: 20px; background: #16213e; border-right: 3px solid #00fff2; height: 100vh; box-sizing: border-box; display: flex; flex-direction: column; gap: 10px; z-index: 100; }
+        canvas { background: #222; flex-grow: 1; }
+        .card { background: #0f3460; padding: 12px; border-radius: 8px; border-left: 5px solid #00fff2; font-size: 13px; }
+        .log { flex-grow: 1; background: #000; padding: 10px; font-size: 11px; color: #00ff00; overflow-y: auto; border: 1px solid #00fff2; border-radius: 5px; }
+        button { width: 100%; padding: 15px; background: #00fff2; color: #16213e; border: none; font-weight: bold; cursor: pointer; border-radius: 5px; }
+        b { color: #fff; }
     </style>
 </head>
 <body>
 
 <div id="sidebar">
-    <h2>AI PILOT PRO</h2>
+    <h2>CITY_AI v4.0</h2>
     <div class="card">
-        Decision: <b id="decision">IDLE</b><br>
-        Speed: <b id="speed">0</b> km/h<br>
-        Sensors: <b id="sensorStat">ACTIVE</b>
+        EGO_DECISION: <b id="decision">STANDBY</b><br>
+        CURRENT_SPEED: <b id="speed">0</b> km/h<br>
+        SIGNAL_A: <b id="j1Stat">--</b> | SIGNAL_B: <b id="j2Stat">--</b>
     </div>
-    
-    <div class="log" id="log">> System Standby...</div>
-    
-    <button class="btn-main" onclick="start()">ENGAGE AUTOPILOT</button>
-    <button class="btn-alt" onclick="addPedestrian()">TRIGGER PEDESTRIAN</button>
-    <button class="btn-alt" style="background:#f9a825" onclick="addObstacle()">DROP HAZARD</button>
+    <div class="log" id="log">> Environment Loaded.<br>> Awaiting Ignition...</div>
+    <button onclick="start()">INITIATE DRIVE</button>
 </div>
 
-<canvas id="road"></canvas>
+<canvas id="cityCanvas"></canvas>
 
 <script>
-const canvas = document.getElementById("road");
+const canvas = document.getElementById("cityCanvas");
 const ctx = canvas.getContext("2d");
+canvas.width = window.innerWidth - 340;
+canvas.height = window.innerHeight;
 
-function resize() {
-    canvas.width = window.innerWidth - 350;
-    canvas.height = window.innerHeight;
-}
-window.onresize = resize;
-resize();
-
-// Simulation State
-let car = { x: 0, y: 0, targetX: 0, speed: 0, w: 35, h: 60, indicator: null };
-let obstacles = [];
-let pedestrians = [];
-let light = "GREEN";
+// Config
+const roadWidth = 140;
+const junctionSpacing = 700;
+let worldScroll = 0;
 let active = false;
-let frame = 0;
 
-car.x = canvas.width/2;
-car.targetX = canvas.width/2;
-car.y = canvas.height - 150;
+// Entities
+let ego = { x: canvas.width/2, y: canvas.height - 200, w: 30, h: 55, speed: 0 };
+let junctions = [
+    { worldY: 200, state: "GREEN", timer: 0 },
+    { worldY: 200 - junctionSpacing, state: "RED", timer: 150 }
+];
+let crossCars = [];
+let peds = [];
 
-function log(msg) {
+function log(m) { 
     const l = document.getElementById("log");
-    l.innerHTML = `> ${msg}<br>` + l.innerHTML;
+    l.innerHTML = `> ${m}<br>` + l.innerHTML; 
 }
 
-function addObstacle() {
-    obstacles.push({ x: canvas.width/2 + (Math.random() > 0.5 ? 50 : -50), y: -50 });
-    log("SENSOR: Static hazard detected.");
+function drawCar(x, y, w, h, color, angle=0) {
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate(angle);
+    ctx.fillStyle = color;
+    ctx.fillRect(-w/2, -h/2, w, h);
+    ctx.fillStyle = "rgba(0,0,0,0.5)"; // Windshield
+    ctx.fillRect(-w/2 + 5, -h/2 + 5, w - 10, 10);
+    ctx.restore();
 }
 
-function addPedestrian() {
-    pedestrians.push({ x: -20, y: 200, speed: 1.5 });
-    log("WARNING: Pedestrian on crossing!");
+function drawStickman(x, y, isWaiting) {
+    ctx.fillStyle = isWaiting ? "#ff4d4d" : "#fff";
+    ctx.fillRect(x-2, y-15, 4, 10); // body
+    ctx.beginPath(); ctx.arc(x, y-18, 3, 0, Math.PI*2); ctx.fill(); // head
 }
-
-// Light Cycle
-setInterval(() => {
-    light = (light === "GREEN") ? "RED" : "GREEN";
-    log("ENVIRONMENT: Signal turned " + light);
-}, 7000);
 
 function update() {
     if(!active) return;
-    frame++;
     ctx.clearRect(0,0,canvas.width, canvas.height);
+    worldScroll += ego.speed;
 
-    const roadX = canvas.width/2 - 110;
-    const roadW = 220;
+    let roadX = canvas.width/2 - roadWidth/2;
 
-    // 1. DRAW SCENERY
-    ctx.fillStyle = "#2c3e50"; // Sidewalks
-    ctx.fillRect(roadX - 50, 0, 50, canvas.height);
-    ctx.fillRect(roadX + roadW, 0, 50, canvas.height);
+    // 1. DRAW BACKGROUND & VERTICAL ROAD
+    ctx.fillStyle = "#2c3e50"; ctx.fillRect(0,0,canvas.width, canvas.height);
+    ctx.fillStyle = "#34495e"; ctx.fillRect(roadX, 0, roadWidth, canvas.height);
     
-    ctx.fillStyle = "#34495e"; // Road
-    ctx.fillRect(roadX, 0, roadW, canvas.height);
+    // Lane lines
+    ctx.strokeStyle = "#fff"; ctx.setLineDash([20, 20]); ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(canvas.width/2, 0); ctx.lineTo(canvas.width/2, canvas.height); ctx.stroke();
 
-    // Crosswalk
-    ctx.fillStyle = "rgba(255,255,255,0.3)";
-    for(let i=0; i<6; i++) ctx.fillRect(roadX + 5 + (i*35), 180, 25, 60);
+    let stopNeeded = false;
 
-    // 2. AI PERCEPTION (LIDAR)
-    let sensorRange = 220;
-    let stopRequired = false;
-    let hazardInPath = false;
+    // 2. JUNCTION LOGIC
+    junctions.forEach((j, i) => {
+        // Infinite Wrap
+        let loop = junctionSpacing * 2;
+        let localY = (( (j.worldY + worldScroll) % loop) + loop) % loop;
+        
+        // Horizontal Road
+        ctx.setLineDash([]);
+        ctx.fillStyle = "#34495e";
+        ctx.fillRect(0, localY - 60, canvas.width, 120);
+        
+        // Traffic Signal Cycle
+        j.timer++;
+        if(j.timer > 300) { j.state = j.state === "GREEN" ? "RED" : "GREEN"; j.timer = 0; }
+        document.getElementById(`j${i+1}Stat`).innerText = j.state;
 
-    // Check Pedestrians
-    pedestrians.forEach((p, i) => {
-        ctx.fillStyle = "#ff00ff";
-        ctx.beginPath(); ctx.arc(p.x, p.y, 10, 0, Math.PI*2); ctx.fill();
-        p.x += p.speed;
-        if(p.x > roadX && p.x < roadX + roadW && Math.abs(car.y - p.y) < sensorRange) stopRequired = true;
-        if(p.x > canvas.width) pedestrians.splice(i, 1);
-    });
+        // Draw Lights
+        ctx.fillStyle = "#111"; ctx.fillRect(roadX + roadWidth + 5, localY - 40, 25, 80);
+        ctx.fillStyle = j.state === "RED" ? "red" : "#222";
+        ctx.beginPath(); ctx.arc(roadX + roadWidth + 17, localY - 25, 8, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = j.state === "GREEN" ? "#00ff00" : "#222";
+        ctx.beginPath(); ctx.arc(roadX + roadWidth + 17, localY + 15, 8, 0, Math.PI*2); ctx.fill();
 
-    // Check Obstacles
-    obstacles.forEach((ob, i) => {
-        ctx.fillStyle = "#f9a825";
-        ctx.fillRect(ob.x - 15, ob.y - 15, 30, 30);
-        ob.y += 2;
-        if(Math.abs(ob.x - car.x) < 40 && (car.y - ob.y) < sensorRange && (car.y - ob.y) > 0) hazardInPath = true;
-        if(ob.y > canvas.height) obstacles.splice(i, 1);
-    });
-
-    // Traffic Light
-    if(light === "RED" && car.y > 250 && car.y < 500) stopRequired = true;
-
-    // 3. DECISION ENGINE
-    if(stopRequired || (hazardInPath && car.speed > 1)) {
-        car.speed *= 0.88;
-        document.getElementById("decision").innerText = stopRequired ? "BRAKING (OBJECT)" : "EVADING HAZARD";
-        if(hazardInPath) {
-            car.targetX = (car.x > canvas.width/2) ? canvas.width/2 - 55 : canvas.width/2 + 55;
-            car.indicator = (car.targetX < car.x) ? "LEFT" : "RIGHT";
+        // Cross Traffic Spawner
+        if(j.state === "RED" && Math.random() < 0.02) { // Horizontal cars move when vertical is RED
+            let dir = Math.random() > 0.5 ? 1 : -1;
+            crossCars.push({ x: dir > 0 ? -50 : canvas.width + 50, y: localY + (dir * 30), speed: dir * 4, color: "#e74c3c" });
         }
+
+        // Stickmen Spawner
+        if(Math.random() < 0.01) {
+            peds.push({ x: roadX - 30, y: localY + 40, state: "WAITING", junction: j });
+        }
+
+        // AI PERCEPTION: Stop if light is red and junction is ahead
+        if(j.state === "RED" && localY > ego.y - 150 && localY < ego.y) stopNeeded = true;
+    });
+
+    // 3. ENTITY UPDATES
+    // Cross Cars
+    crossCars.forEach((c, i) => {
+        drawCar(c.x, c.y, 50, 25, c.color, 0);
+        c.x += c.speed;
+        if(c.x < -100 || c.x > canvas.width + 100) crossCars.splice(i, 1);
+    });
+
+    // Pedestrians
+    peds.forEach((p, i) => {
+        let loop = junctionSpacing * 2;
+        let localY = (( (p.junction.worldY + worldScroll) % loop) + loop) % loop;
+        drawStickman(p.x, localY + 40, p.state === "WAITING");
+        
+        if(p.junction.state === "RED") { // Peds cross when traffic stops
+            p.state = "CROSSING";
+            p.x += 1.5;
+        }
+        if(p.x > canvas.width) peds.splice(i,1);
+    });
+
+    // 4. EGO AI DECISION
+    if(stopNeeded) {
+        ego.speed *= 0.92;
+        document.getElementById("decision").innerText = "BRAKING (SIGNAL)";
     } else {
-        if(car.speed < 5) car.speed += 0.1;
-        car.indicator = null;
+        if(ego.speed < 4) ego.speed += 0.08;
         document.getElementById("decision").innerText = "CRUISING";
     }
 
-    // 4. PHYSICS & DRAWING
-    car.x += (car.targetX - car.x) * 0.08;
-    
-    // Draw Car
-    ctx.fillStyle = "#00fff2";
-    ctx.shadowBlur = 15; ctx.shadowColor = "#00fff2";
-    ctx.fillRect(car.x - 15, car.y - 30, 30, 60);
-    ctx.shadowBlur = 0;
+    // 5. DRAW EGO CAR
+    drawCar(ego.x, ego.y, ego.w, ego.h, "#00fff2", 0);
+    // Visual Radar
+    ctx.strokeStyle = stopNeeded ? "red" : "rgba(0,255,242,0.2)";
+    ctx.setLineDash([5,5]);
+    ctx.strokeRect(ego.x - 15, ego.y - 150, 30, 150);
 
-    // Sensor Visualization (The Sweep)
-    ctx.strokeStyle = (stopRequired || hazardInPath) ? "red" : "rgba(0, 255, 242, 0.2)";
-    ctx.setLineDash([5, 5]);
-    ctx.strokeRect(car.x - 20, car.y - sensorRange, 40, sensorRange);
-
-    // Traffic Light Visual
-    ctx.fillStyle = "#333"; ctx.fillRect(roadX + roadW + 10, 50, 40, 100);
-    ctx.fillStyle = (light === "RED") ? "red" : "#222";
-    ctx.beginPath(); ctx.arc(roadX + roadW + 30, 75, 12, 0, Math.PI*2); ctx.fill();
-    ctx.fillStyle = (light === "GREEN") ? "#00ff00" : "#222";
-    ctx.beginPath(); ctx.arc(roadX + roadW + 30, 125, 12, 0, Math.PI*2); ctx.fill();
-
-    document.getElementById("speed").innerText = Math.round(car.speed * 20);
+    document.getElementById("speed").innerText = Math.round(ego.speed * 20);
     requestAnimationFrame(update);
 }
 
-function start() {
-    active = true;
-    log("NEURAL NETWORK ONLINE.");
-    update();
-}
+function start() { active = true; log("URBAN AI INITIALIZED."); update(); }
 </script>
 </body>
 </html>
