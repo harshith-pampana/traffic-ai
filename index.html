@@ -1,231 +1,1042 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>AutoDrive AI — Urban Grid Simulation</title>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Share+Tech+Mono&family=Inter:wght@400;700&display=swap" rel="stylesheet">
-    <style>
-        :root {
-            --bg: #080c10; --surface: #0d1117; --panel: #111820; --border: #1e2d3d;
-            --accent: #00d4ff; --accent2: #ff6b35; --accent3: #39ff14;
-            --danger: #ff2244; --text: #c9d1d9; --dim: #4a5568;
-        }
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
-        
-        header { display: flex; align-items: center; justify-content: space-between; padding: 10px 20px; border-bottom: 1px solid var(--border); background: var(--surface); }
-        .logo { font-family: 'Orbitron', sans-serif; font-weight: 900; color: var(--accent); letter-spacing: 2px; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AutoDrive AI — Autonomous Vehicle Simulation</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080c10;
+    --surface: #0d1117;
+    --panel: #111820;
+    --border: #1e2d3d;
+    --accent: #00d4ff;
+    --accent2: #ff6b35;
+    --accent3: #39ff14;
+    --warning: #ffcc00;
+    --danger: #ff2244;
+    --text: #c9d1d9;
+    --dim: #4a5568;
+    --road: #1a1f2e;
+    --lane: #2a3244;
+    --marking: #3a4a5e;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-shrink: 0;
+  }
+  .logo {
+    font-family: 'Orbitron', monospace;
+    font-weight: 900;
+    font-size: 1.1rem;
+    color: var(--accent);
+    letter-spacing: 3px;
+    text-transform: uppercase;
+  }
+  .logo span { color: var(--accent2); }
+  .status-bar {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+  }
+  .status-pill {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.7rem;
+    padding: 3px 10px;
+    border-radius: 20px;
+    border: 1px solid;
+    letter-spacing: 1px;
+  }
+  .status-pill.active { border-color: var(--accent3); color: var(--accent3); background: #39ff1415; }
+  .status-pill.warn { border-color: var(--warning); color: var(--warning); background: #ffcc0015; }
 
-        .main { display: flex; flex: 1; overflow: hidden; }
+  .main {
+    display: flex;
+    flex: 1;
+    overflow: hidden;
+  }
 
-        /* Left Panel */
-        .left-panel { width: 240px; background: var(--surface); border-right: 1px solid var(--border); padding: 15px; display: flex; flex-direction: column; gap: 15px; }
-        .panel-title { font-family: 'Orbitron', sans-serif; font-size: 0.65rem; color: var(--dim); border-bottom: 1px solid var(--border); padding-bottom: 5px; text-transform: uppercase; }
-        .speed-num { font-family: 'Orbitron', sans-serif; font-size: 2.2rem; color: var(--accent); text-align: center; }
-        
-        .metric { display: flex; justify-content: space-between; font-family: 'Share Tech Mono', monospace; font-size: 0.8rem; margin: 5px 0; }
-        .sensor-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
-        .sensor-item { background: var(--panel); border: 1px solid var(--border); padding: 5px; font-family: 'Share Tech Mono'; font-size: 0.65rem; }
+  /* LEFT PANEL */
+  .left-panel {
+    width: 210px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
+    gap: 12px;
+    overflow-y: auto;
+  }
+  .panel-title {
+    font-family: 'Orbitron', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 2px;
+    color: var(--dim);
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 6px;
+    margin-bottom: 4px;
+  }
+  .metric {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 6px 0;
+    border-bottom: 1px solid #1a2232;
+  }
+  .metric-label {
+    font-size: 0.65rem;
+    color: var(--dim);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+  .metric-value {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.85rem;
+    color: var(--accent);
+  }
+  .metric-value.warn { color: var(--warning); }
+  .metric-value.danger { color: var(--danger); }
+  .metric-value.ok { color: var(--accent3); }
 
-        /* Canvas Area */
-        .canvas-wrap { flex: 1; background: #000; display: flex; align-items: center; justify-content: center; position: relative; }
-        canvas { border: 1px solid var(--border); background: #151c27; }
+  .speed-display {
+    text-align: center;
+    padding: 10px 0;
+  }
+  .speed-num {
+    font-family: 'Orbitron', monospace;
+    font-size: 2.4rem;
+    font-weight: 900;
+    color: var(--accent);
+    line-height: 1;
+  }
+  .speed-unit {
+    font-size: 0.65rem;
+    color: var(--dim);
+    letter-spacing: 2px;
+  }
 
-        /* Right Panel */
-        .right-panel { width: 260px; background: var(--surface); border-left: 1px solid var(--border); padding: 15px; display: flex; flex-direction: column; gap: 15px; }
-        .ctrl-btn { background: var(--panel); border: 1px solid var(--border); color: var(--text); font-family: 'Share Tech Mono'; padding: 10px; cursor: pointer; margin-bottom: 5px; transition: 0.2s; width: 100%; text-align: left; }
-        .ctrl-btn:hover { border-color: var(--accent); background: #00d4ff15; }
-        
-        #decision-log { flex: 1; background: #050505; border: 1px solid var(--border); padding: 10px; font-family: 'Share Tech Mono'; font-size: 0.65rem; overflow-y: auto; color: #0f0; line-height: 1.4; }
-        .log-entry { margin-bottom: 4px; border-bottom: 1px solid #111; }
-    </style>
+  .decision-box {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+  }
+  .decision-label {
+    font-size: 0.6rem;
+    color: var(--dim);
+    letter-spacing: 1px;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+  }
+  .decision-text {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.75rem;
+    color: var(--accent3);
+    line-height: 1.5;
+  }
+  .decision-text.braking { color: var(--danger); }
+  .decision-text.slowing { color: var(--warning); }
+  .decision-text.changing { color: var(--accent); }
+
+  .sensor-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 5px;
+  }
+  .sensor-item {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 5px 7px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .sensor-name { color: var(--dim); }
+  .sensor-val { color: var(--accent); }
+  .sensor-val.active { color: var(--accent3); }
+  .sensor-val.alert { color: var(--danger); }
+
+  /* CANVAS */
+  .canvas-wrap {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--bg);
+    position: relative;
+    overflow: hidden;
+  }
+  canvas {
+    display: block;
+    border: 1px solid var(--border);
+  }
+
+  /* RIGHT PANEL */
+  .right-panel {
+    width: 220px;
+    flex-shrink: 0;
+    background: var(--surface);
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    padding: 12px;
+    gap: 12px;
+    overflow: hidden;
+  }
+
+  .controls-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .ctrl-btn {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.65rem;
+    padding: 7px 5px;
+    border-radius: 4px;
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+    letter-spacing: 0.5px;
+  }
+  .ctrl-btn:hover { border-color: var(--accent); color: var(--accent); background: #00d4ff12; }
+  .ctrl-btn:active { transform: scale(0.97); }
+  .ctrl-btn.danger-btn:hover { border-color: var(--danger); color: var(--danger); background: #ff224412; }
+  .ctrl-btn.full { grid-column: 1/-1; }
+
+  .log-wrap {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  #decision-log {
+    flex: 1;
+    overflow-y: auto;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px;
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.62rem;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  #decision-log::-webkit-scrollbar { width: 3px; }
+  #decision-log::-webkit-scrollbar-track { background: transparent; }
+  #decision-log::-webkit-scrollbar-thumb { background: var(--border); }
+  .log-entry {
+    display: flex;
+    gap: 6px;
+    align-items: flex-start;
+    padding: 2px 0;
+    border-bottom: 1px solid #1a2232;
+    animation: fadeIn 0.3s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateX(-4px); } to { opacity: 1; } }
+  .log-time { color: var(--dim); flex-shrink: 0; }
+  .log-msg { color: var(--text); line-height: 1.4; }
+  .log-msg.acc { color: var(--accent3); }
+  .log-msg.brake { color: var(--danger); }
+  .log-msg.slow { color: var(--warning); }
+  .log-msg.lane { color: var(--accent); }
+  .log-msg.signal { color: #aa88ff; }
+
+  .scenario-info {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent2);
+    border-radius: 4px;
+    padding: 8px;
+    font-size: 0.65rem;
+    color: var(--dim);
+    line-height: 1.5;
+  }
+  .scenario-info strong { color: var(--accent2); display: block; margin-bottom: 3px; font-family: 'Share Tech Mono', monospace; }
+
+  /* bottom bar */
+  .bottom-bar {
+    height: 28px;
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    padding: 0 16px;
+    gap: 20px;
+    flex-shrink: 0;
+  }
+  .bottom-stat {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 0.6rem;
+    color: var(--dim);
+  }
+  .bottom-stat span { color: var(--accent); }
+</style>
 </head>
 <body>
 
 <header>
-    <div class="logo">AUTODRIVE <span>AI</span> <small style="font-size:0.5rem; color:var(--dim)">// URBAN_GRID_V3</small></div>
-    <div style="font-family: 'Share Tech Mono'; font-size: 0.8rem; color: var(--accent3)">● SYSTEM_ACTIVE</div>
+  <div class="logo">Auto<span>Drive</span> AI <span style="font-size:0.6rem;color:var(--dim);letter-spacing:1px">// SIMULATION v2.0</span></div>
+  <div class="status-bar">
+    <div class="status-pill active" id="ai-status">● AI ACTIVE</div>
+    <div class="status-pill" id="scenario-pill" style="border-color:var(--dim);color:var(--dim)">SCENARIO: CITY</div>
+    <div class="status-pill warn" id="sensor-status">◈ SENSORS ONLINE</div>
+  </div>
 </header>
 
 <div class="main">
-    <div class="left-panel">
-        <div class="panel-title">Velocity telemetry</div>
-        <div class="speed-num" id="speed-val">0</div>
-        <div style="text-align:center; font-size:0.6rem; color:var(--dim)">KM/H</div>
-
-        <div class="panel-title">Trip Analysis</div>
-        <div class="metric">Distance: <span id="stat-dist" style="color:var(--accent)">0</span>m</div>
-        <div class="metric">Decisions: <span id="stat-dec" style="color:var(--accent2)">0</span></div>
-        
-        <div class="panel-title">LIDAR Array</div>
-        <div class="sensor-grid">
-            <div class="sensor-item"><div style="color:var(--dim)">FRONT</div><div id="s-front">CLEAR</div></div>
-            <div class="sensor-item"><div style="color:var(--dim)">SIGNAL</div><div id="s-signal">GREEN</div></div>
-            <div class="sensor-item"><div style="color:var(--dim)">LANE</div><div id="s-lane">CENTER</div></div>
-            <div class="sensor-item"><div style="color:var(--dim)">PATH</div><div id="s-path">STABLE</div></div>
-        </div>
+  <!-- LEFT -->
+  <div class="left-panel">
+    <div>
+      <div class="panel-title">Speed</div>
+      <div class="speed-display">
+        <div class="speed-num" id="speed-disp">0</div>
+        <div class="speed-unit">KM / H</div>
+      </div>
     </div>
-
-    <div class="canvas-wrap">
-        <canvas id="simCanvas" width="600" height="600"></canvas>
+    <div>
+      <div class="panel-title">Current Decision</div>
+      <div class="decision-box">
+        <div class="decision-label">Action</div>
+        <div class="decision-text" id="decision-main">INITIALIZING...</div>
+        <div class="decision-label" style="margin-top:6px">Reason</div>
+        <div class="decision-text" id="decision-reason" style="color:var(--dim)">—</div>
+      </div>
     </div>
-
-    <div class="right-panel">
-        <div class="panel-title">Neural Injection</div>
-        <button class="ctrl-btn" onclick="spawnEntity('obs')">+ DROP HAZARD</button>
-        <button class="ctrl-btn" onclick="spawnEntity('ped')">+ CROSSING PEDESTRIAN</button>
-        <button class="ctrl-btn" onclick="toggleLight()">! TOGGLE SIGNAL</button>
-        <button class="ctrl-btn" style="color:var(--danger)" onclick="location.reload()">↺ RESET KERNEL</button>
-
-        <div class="panel-title">Decision Stream</div>
-        <div id="decision-log"></div>
+    <div>
+      <div class="panel-title">Sensor Readings</div>
+      <div class="sensor-grid">
+        <div class="sensor-item"><div class="sensor-name">FRONT</div><div class="sensor-val" id="s-front">CLEAR</div></div>
+        <div class="sensor-item"><div class="sensor-name">REAR</div><div class="sensor-val" id="s-rear">CLEAR</div></div>
+        <div class="sensor-item"><div class="sensor-name">LEFT</div><div class="sensor-val" id="s-left">CLEAR</div></div>
+        <div class="sensor-item"><div class="sensor-name">RIGHT</div><div class="sensor-val" id="s-right">CLEAR</div></div>
+        <div class="sensor-item"><div class="sensor-name">SIGNAL</div><div class="sensor-val" id="s-signal">—</div></div>
+        <div class="sensor-item"><div class="sensor-name">LANE</div><div class="sensor-val" id="s-lane">CENTER</div></div>
+      </div>
     </div>
+    <div>
+      <div class="panel-title">Trip Stats</div>
+      <div class="metric"><div class="metric-label">Distance</div><div class="metric-value" id="stat-dist">0 m</div></div>
+      <div class="metric"><div class="metric-label">Decisions</div><div class="metric-value" id="stat-dec">0</div></div>
+      <div class="metric"><div class="metric-label">Incidents</div><div class="metric-value ok" id="stat-inc">0</div></div>
+      <div class="metric"><div class="metric-label">Avg Speed</div><div class="metric-value" id="stat-avg">0 km/h</div></div>
+    </div>
+  </div>
+
+  <!-- CANVAS -->
+  <div class="canvas-wrap">
+    <canvas id="sim" width="700" height="520"></canvas>
+  </div>
+
+  <!-- RIGHT -->
+  <div class="right-panel">
+    <div>
+      <div class="panel-title">Scenario Controls</div>
+      <div class="controls-grid">
+        <button class="ctrl-btn" onclick="addObstacle()">+ OBSTACLE</button>
+        <button class="ctrl-btn" onclick="addPedestrian()">+ PERSON</button>
+        <button class="ctrl-btn" onclick="toggleLight()">TOGGLE LIGHT</button>
+        <button class="ctrl-btn" onclick="addCar()">+ VEHICLE</button>
+        <button class="ctrl-btn danger-btn" onclick="clearObstacles()">CLEAR ALL</button>
+        <button class="ctrl-btn" onclick="toggleSensors()">SENSORS</button>
+        <button class="ctrl-btn full" onclick="resetSim()">⟳ RESET SIMULATION</button>
+      </div>
+    </div>
+    <div class="scenario-info">
+      <strong>ℹ SCENARIO INFO</strong>
+      <span id="scenario-desc">City driving — mixed traffic, signals, pedestrians. AI adapts in real time.</span>
+    </div>
+    <div class="log-wrap">
+      <div class="panel-title">Decision Log</div>
+      <div id="decision-log"></div>
+    </div>
+  </div>
+</div>
+
+<div class="bottom-bar">
+  <div class="bottom-stat">SIM TIME: <span id="sim-time">00:00</span></div>
+  <div class="bottom-stat">FRAME: <span id="frame-count">0</span></div>
+  <div class="bottom-stat">ACTIVE OBJECTS: <span id="obj-count">0</span></div>
+  <div class="bottom-stat">ROAD: <span id="road-type">MULTI-LANE HIGHWAY</span></div>
+  <div class="bottom-stat" style="margin-left:auto">AUTODRIVE AI © 2025 — AI CASE STUDY</div>
 </div>
 
 <script>
-    const canvas = document.getElementById('simCanvas');
-    const ctx = canvas.getContext('2d');
+const canvas = document.getElementById('sim');
+const ctx = canvas.getContext('2d');
+const W = canvas.width, H = canvas.height;
 
-    // Configuration
-    const LANES = [180, 300, 420];
-    let ego = { x: 300, y: 480, speed: 0, targetX: 300, dist: 0, decisions: 0 };
-    let worldY = 0;
-    let signalState = "GREEN";
-    let entities = [];
-    let active = true;
+// ── Road config ──
+const LANES = 4;
+const ROAD_LEFT = 60;
+const ROAD_RIGHT = W - 60;
+const ROAD_W = ROAD_RIGHT - ROAD_LEFT;
+const LANE_W = ROAD_W / LANES;
+const laneCenter = i => ROAD_LEFT + i * LANE_W + LANE_W / 2;
 
-    function log(msg) {
-        const logBox = document.getElementById('decision-log');
-        const time = new Date().toLocaleTimeString([], {hour12:false, minute:'2-digit', second:'2-digit'});
-        logBox.innerHTML = `<div class="log-entry"><span style="color:var(--dim)">[${time}]</span> ${msg}</div>` + logBox.innerHTML;
+// ── State ──
+let showSensors = true;
+let simTime = 0, frames = 0;
+let totalDist = 0, decisionCount = 0, incidents = 0;
+let speedSum = 0, speedSamples = 0;
+let lastDecision = '', lastDecisionTime = 0;
+
+// Traffic objects
+let npcCars = [];
+let obstacles = [];
+let pedestrians = [];
+let trafficLights = [];
+let roadOffset = 0;
+
+// ── EGO CAR ──
+const ego = {
+  x: laneCenter(1),
+  y: H * 0.72,
+  w: 22, h: 38,
+  speed: 0,
+  targetSpeed: 60,
+  maxSpeed: 110,
+  lane: 1,
+  targetLane: 1,
+  laneChanging: false,
+  laneChangeProgress: 0,
+  indicatorLeft: false,
+  indicatorRight: false,
+  indicatorTimer: 0,
+  brakeLights: false,
+  action: 'CRUISE',
+  reason: 'Road clear',
+  color: '#00d4ff',
+};
+
+// Sensor state
+let sensors = { front: 'CLEAR', rear: 'CLEAR', left: 'CLEAR', right: 'CLEAR', signal: '—', lane: 'CENTER' };
+
+// ── Traffic lights ──
+function initLights() {
+  trafficLights = [
+    { x: ROAD_LEFT - 15, y: 120, state: 'GREEN', timer: 180 + Math.random()*60 },
+    { x: ROAD_RIGHT + 5, y: 320, state: 'RED', timer: 120 + Math.random()*60 },
+  ];
+}
+
+// ── Spawn NPC cars ──
+function spawnNPC() {
+  const lane = Math.floor(Math.random() * LANES);
+  const speed = 30 + Math.random() * 50;
+  npcCars.push({
+    x: laneCenter(lane),
+    y: -60 - Math.random() * 200,
+    w: 20, h: 36,
+    speed,
+    lane,
+    color: ['#ff6b35','#aa88ff','#ffcc00','#4ecdc4','#ff8fab'][Math.floor(Math.random()*5)],
+    id: Math.random()
+  });
+}
+
+function addCar() {
+  const lane = Math.floor(Math.random() * LANES);
+  npcCars.push({
+    x: laneCenter(lane),
+    y: ego.y - 80 - Math.random() * 100,
+    w: 20, h: 36,
+    speed: 20 + Math.random() * 30,
+    lane,
+    color: '#ff6b35',
+    id: Math.random()
+  });
+  logDecision('VEHICLE ADDED', 'User spawned vehicle', 'lane');
+}
+
+function addObstacle() {
+  const lane = Math.floor(Math.random() * LANES);
+  obstacles.push({
+    x: laneCenter(lane),
+    y: ego.y - 120 - Math.random() * 80,
+    w: 24, h: 18,
+    lane,
+    type: 'debris'
+  });
+  logDecision('OBSTACLE DETECTED', 'User placed obstacle', 'slow');
+}
+
+function addPedestrian() {
+  pedestrians.push({
+    x: ROAD_LEFT + Math.random() * ROAD_W,
+    y: ego.y - 80 - Math.random() * 60,
+    r: 7,
+    vx: (Math.random() - 0.5) * 1.2,
+    vy: 0.3 + Math.random() * 0.4,
+    color: '#ff8fab'
+  });
+  logDecision('PEDESTRIAN AHEAD', 'User added pedestrian', 'brake');
+}
+
+function clearObstacles() {
+  obstacles = [];
+  pedestrians = [];
+  logDecision('ENVIRONMENT CLEARED', 'All obstacles removed', 'acc');
+}
+
+function toggleLight() {
+  trafficLights.forEach(l => {
+    l.state = l.state === 'RED' ? 'GREEN' : l.state === 'GREEN' ? 'YELLOW' : 'RED';
+  });
+  logDecision('LIGHT CHANGED', 'Traffic signal toggled', 'signal');
+}
+
+function toggleSensors() {
+  showSensors = !showSensors;
+}
+
+function resetSim() {
+  npcCars = []; obstacles = []; pedestrians = [];
+  ego.speed = 0; ego.lane = 1; ego.targetLane = 1;
+  ego.laneChanging = false; ego.x = laneCenter(1); ego.y = H * 0.72;
+  simTime = 0; frames = 0; totalDist = 0; decisionCount = 0; incidents = 0;
+  speedSum = 0; speedSamples = 0;
+  document.getElementById('decision-log').innerHTML = '';
+  initLights();
+  for(let i=0;i<5;i++) spawnNPC();
+  logDecision('SYSTEM RESET', 'Simulation restarted', 'acc');
+}
+
+// ── Logging ──
+const LOG_TYPES = { acc:'acc', brake:'brake', slow:'slow', lane:'lane', signal:'signal' };
+function logDecision(action, reason, type='acc') {
+  const log = document.getElementById('decision-log');
+  const mins = String(Math.floor(simTime/60)).padStart(2,'0');
+  const secs = String(Math.floor(simTime%60)).padStart(2,'0');
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML = `<span class="log-time">${mins}:${secs}</span><span class="log-msg ${type}">[${action}] ${reason}</span>`;
+  log.appendChild(entry);
+  log.scrollTop = log.scrollHeight;
+  // Trim log
+  while(log.children.length > 80) log.removeChild(log.firstChild);
+  decisionCount++;
+}
+
+// ── Perception ──
+function getDistance(ego, obj) {
+  return obj.y - ego.y; // vertical only (negative = ahead)
+}
+
+function perceive() {
+  let frontClear = true, frontDist = 999;
+  let leftClear = true, rightClear = true, rearClear = true;
+  let signalAhead = '—';
+
+  const SENSOR_RANGE = 160;
+  const EGO_LANE = ego.lane;
+
+  // Check NPC cars
+  [...npcCars, ...obstacles].forEach(obj => {
+    const dy = ego.y - obj.y; // positive = obj is ahead
+    const sameX = Math.abs(obj.x - ego.x) < LANE_W * 0.7;
+    const leftX = Math.abs(obj.x - laneCenter(EGO_LANE - 1)) < LANE_W * 0.7;
+    const rightX = Math.abs(obj.x - laneCenter(EGO_LANE + 1)) < LANE_W * 0.7;
+
+    if (sameX && dy > 0 && dy < SENSOR_RANGE) {
+      frontClear = false;
+      frontDist = Math.min(frontDist, dy);
     }
+    if (sameX && dy < 0 && dy > -80) rearClear = false;
+    if (leftX && Math.abs(dy) < SENSOR_RANGE * 0.7) leftClear = false;
+    if (rightX && Math.abs(dy) < SENSOR_RANGE * 0.7) rightClear = false;
+  });
 
-    function spawnEntity(type) {
-        if(type === 'obs') {
-            entities.push({ type: 'obs', x: LANES[Math.floor(Math.random()*3)], y: -50 });
-            log("HAZARD_INJECTED: Static obstacle detected.");
-        } else if(type === 'ped') {
-            entities.push({ type: 'ped', x: 0, y: (worldY % 1000) + 20, speed: 2 });
-            log("WARNING: Pedestrian entering roadway.");
-        }
+  // Pedestrians
+  pedestrians.forEach(p => {
+    const dy = ego.y - p.y;
+    if (dy > 0 && dy < SENSOR_RANGE && Math.abs(p.x - ego.x) < LANE_W) {
+      frontClear = false;
+      frontDist = Math.min(frontDist, dy);
     }
+  });
 
-    function toggleLight() {
-        signalState = (signalState === "GREEN") ? "RED" : "GREEN";
-        log(`SIGNAL_MANUAL: Switch to ${signalState}`);
+  // Traffic lights
+  trafficLights.forEach(tl => {
+    const dy = ego.y - tl.y;
+    if (dy > 0 && dy < SENSOR_RANGE) signalAhead = tl.state;
+  });
+
+  sensors.front = frontClear ? 'CLEAR' : `${Math.round(frontDist)}m`;
+  sensors.rear = rearClear ? 'CLEAR' : 'CLOSE';
+  sensors.left = EGO_LANE > 0 ? (leftClear ? 'CLEAR' : 'BLOCKED') : 'N/A';
+  sensors.right = EGO_LANE < LANES-1 ? (rightClear ? 'CLEAR' : 'BLOCKED') : 'N/A';
+  sensors.signal = signalAhead;
+  sensors.lane = ego.laneChanging ? 'CHANGING' : 'CENTER';
+
+  return { frontClear, frontDist, leftClear, rightClear, rearClear, signalAhead };
+}
+
+// ── Decision Engine ──
+function decide(p) {
+  let action = '', reason = '', type = 'acc';
+
+  // Red light stop
+  if (p.signalAhead === 'RED' && !p.frontClear && p.frontDist < 100) {
+    action = '🛑 BRAKING'; reason = 'RED LIGHT AHEAD'; type = 'brake';
+    ego.targetSpeed = 0;
+    ego.brakeLights = true;
+  }
+  // Yellow slow
+  else if (p.signalAhead === 'YELLOW') {
+    action = '🟡 SLOWING'; reason = 'YELLOW SIGNAL'; type = 'slow';
+    ego.targetSpeed = Math.min(ego.targetSpeed, 25);
+    ego.brakeLights = true;
+  }
+  // Obstacle ahead — try lane change
+  else if (!p.frontClear && p.frontDist < 90) {
+    ego.brakeLights = true;
+    if (p.frontDist < 45) {
+      action = '🛑 HARD BRAKE'; reason = `OBSTACLE AT ${Math.round(p.frontDist)}m`; type = 'brake';
+      ego.targetSpeed = Math.max(0, ego.targetSpeed - 30);
+    } else if (!ego.laneChanging) {
+      // Try lane change
+      if (ego.lane > 0 && p.leftClear) {
+        action = '⬅ LANE CHANGE'; reason = 'BLOCKED AHEAD — MOVING LEFT'; type = 'lane';
+        ego.indicatorLeft = true; ego.indicatorTimer = 60;
+        ego.targetLane = ego.lane - 1;
+        ego.laneChanging = true;
+      } else if (ego.lane < LANES-1 && p.rightClear) {
+        action = '➡ LANE CHANGE'; reason = 'BLOCKED AHEAD — MOVING RIGHT'; type = 'lane';
+        ego.indicatorRight = true; ego.indicatorTimer = 60;
+        ego.targetLane = ego.lane + 1;
+        ego.laneChanging = true;
+      } else {
+        action = '⚠ SLOWING DOWN'; reason = 'ALL LANES BLOCKED'; type = 'slow';
+        ego.targetSpeed = Math.max(15, ego.targetSpeed - 15);
+      }
     }
-
-    function drawCar(x, y, color, isEgo = false) {
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.fillStyle = color;
-        ctx.fillRect(-20, -40, 40, 80);
-        ctx.fillStyle = "rgba(0,0,0,0.6)";
-        ctx.fillRect(-15, -30, 30, 20); // Windshield
-        
-        if(isEgo) {
-            // LIDAR Rays
-            ctx.strokeStyle = "rgba(0, 212, 255, 0.3)";
-            ctx.setLineDash([5, 5]);
-            for(let i = -0.5; i <= 0.5; i += 0.25) {
-                ctx.beginPath();
-                ctx.moveTo(0, -40);
-                ctx.lineTo(i * 200, -250);
-                ctx.stroke();
-            }
-        }
-        ctx.restore();
+  }
+  // Clear road
+  else {
+    ego.brakeLights = false;
+    if (ego.speed < ego.targetSpeed - 5) {
+      action = '🚀 ACCELERATING'; reason = 'ROAD CLEAR'; type = 'acc';
+      ego.targetSpeed = Math.min(80, ego.targetSpeed + 5);
+    } else {
+      action = '✅ CRUISING'; reason = `LANE ${ego.lane+1} — NORMAL FLOW`; type = 'acc';
     }
+    if (ego.laneChanging) { action = '↔ MERGING'; reason = 'COMPLETING LANE CHANGE'; type = 'lane'; }
+  }
 
-    function update() {
-        if(!active) return;
-        ctx.clearRect(0,0,canvas.width, canvas.height);
-        
-        worldY += ego.speed;
-        ego.dist += ego.speed * 0.1;
+  // Update UI
+  if (action !== lastDecision && frames - lastDecisionTime > 30) {
+    lastDecision = action;
+    lastDecisionTime = frames;
+    logDecision(action, reason, type);
+    const dm = document.getElementById('decision-main');
+    const dr = document.getElementById('decision-reason');
+    dm.textContent = action;
+    dm.className = 'decision-text ' + (type === 'brake' ? 'braking' : type === 'slow' ? 'slowing' : type === 'lane' ? 'changing' : '');
+    dr.textContent = reason;
+  }
 
-        // --- 1. Environment: Urban Grid ---
-        ctx.fillStyle = "#1a1f2e"; ctx.fillRect(150, 0, 300, canvas.height); // Main Road
-        
-        // Lane Markings
-        ctx.strokeStyle = "#3a4a5e"; ctx.setLineDash([20, 20]);
-        [240, 360].forEach(lx => {
-            ctx.beginPath(); ctx.moveTo(lx, 0); ctx.lineTo(lx, canvas.height); ctx.stroke();
-        });
+  ego.action = action;
+  ego.reason = reason;
+}
 
-        // Intersection (Cycles every 1000px)
-        let intersectY = (worldY % 1000);
-        ctx.setLineDash([]);
-        ctx.fillStyle = "#1a1f2e";
-        ctx.fillRect(0, intersectY - 80, canvas.width, 160); // Cross-road
+// ── Physics ──
+function updateEgo() {
+  // Speed smoothing
+  const diff = ego.targetSpeed - ego.speed;
+  ego.speed += diff * 0.03;
+  ego.speed = Math.max(0, Math.min(ego.maxSpeed, ego.speed));
 
-        // Traffic Light Logic
-        if(Math.floor(worldY / 500) % 2 === 0) signalState = "GREEN";
-        else signalState = "RED";
-
-        ctx.fillStyle = "#222"; ctx.fillRect(460, intersectY - 50, 20, 100);
-        ctx.fillStyle = (signalState === "RED") ? "#ff2244" : "#111";
-        ctx.beginPath(); ctx.arc(470, intersectY - 30, 8, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = (signalState === "GREEN") ? "#39ff14" : "#111";
-        ctx.beginPath(); ctx.arc(470, intersectY + 10, 8, 0, Math.PI*2); ctx.fill();
-
-        // --- 2. Collision & Perception ---
-        let sensorAlert = false;
-        let stopRequired = (signalState === "RED" && intersectY > ego.y - 200 && intersectY < ego.y);
-
-        entities.forEach((en, i) => {
-            if(en.type === 'obs') {
-                en.y += ego.speed;
-                ctx.fillStyle = "#ff6b35";
-                ctx.fillRect(en.x - 20, en.y - 20, 40, 40);
-                
-                // Detection
-                let dy = ego.y - en.y;
-                let dx = Math.abs(ego.x - en.x);
-                if(dx < 60 && dy < 250 && dy > 0) {
-                    sensorAlert = true;
-                    if(dy < 120) {
-                        ego.targetX = (ego.x > 300) ? 180 : 420; // Swerve
-                        ego.decisions++;
-                    }
-                }
-            } else if(en.type === 'ped') {
-                en.x += en.speed;
-                ctx.fillStyle = "#fff";
-                ctx.beginPath(); ctx.arc(en.x, en.y, 8, 0, Math.PI*2); ctx.fill();
-                if(en.x > 150 && en.x < 450 && Math.abs(en.y - ego.y) < 150) sensorAlert = true;
-            }
-            if(en.y > canvas.height + 100) entities.splice(i, 1);
-        });
-
-        // --- 3. AI Decisions ---
-        if(stopRequired || sensorAlert) {
-            ego.speed *= 0.94; // Brake
-            document.getElementById('s-path').innerText = "EVASIVE";
-            document.getElementById('s-path').style.color = "var(--danger)";
-        } else {
-            if(ego.speed < 6) ego.speed += 0.1;
-            ego.targetX = 300; // Center
-            document.getElementById('s-path').innerText = "STABLE";
-            document.getElementById('s-path').style.color = "var(--accent3)";
-        }
-
-        ego.x += (ego.targetX - ego.x) * 0.1;
-
-        // --- 4. UI Updates ---
-        document.getElementById('speed-val').innerText = Math.round(ego.speed * 15);
-        document.getElementById('stat-dist').innerText = Math.round(ego.dist);
-        document.getElementById('stat-dec').innerText = ego.decisions;
-        document.getElementById('s-front').innerText = sensorAlert ? "HAZARD" : "CLEAR";
-        document.getElementById('s-signal').innerText = signalState;
-        document.getElementById('s-signal').style.color = (signalState === "RED") ? "var(--danger)" : "var(--accent3)";
-
-        drawCar(ego.x, ego.y, "#00d4ff", true);
-        requestAnimationFrame(update);
+  // Lane change
+  if (ego.laneChanging) {
+    ego.laneChangeProgress += 0.025;
+    const tx = laneCenter(ego.targetLane);
+    ego.x += (tx - ego.x) * 0.06;
+    if (Math.abs(ego.x - tx) < 1) {
+      ego.x = tx;
+      ego.lane = ego.targetLane;
+      ego.laneChanging = false;
+      ego.laneChangeProgress = 0;
+      ego.indicatorLeft = false;
+      ego.indicatorRight = false;
     }
+  }
 
-    log("KERNEL_LOADED: Autonomous logic engaged.");
-    update();
+  // Indicator timer
+  if (ego.indicatorTimer > 0) ego.indicatorTimer--;
+  else { ego.indicatorLeft = false; ego.indicatorRight = false; }
+
+  // Road scroll speed
+  roadOffset = (roadOffset + ego.speed * 0.008) % 60;
+
+  // Stats
+  totalDist += ego.speed * 0.008;
+  speedSum += ego.speed;
+  speedSamples++;
+}
+
+function updateNPCs() {
+  npcCars.forEach(c => {
+    c.y += (c.speed * 0.01) - (ego.speed * 0.01);
+    c.x += (laneCenter(c.lane) - c.x) * 0.05;
+  });
+  // Remove offscreen
+  npcCars = npcCars.filter(c => c.y < H + 100);
+  // Spawn
+  if (npcCars.length < 6 && Math.random() < 0.015) spawnNPC();
+
+  obstacles.forEach(o => {
+    o.y += -(ego.speed * 0.01);
+  });
+  obstacles = obstacles.filter(o => o.y > -60 && o.y < H + 60);
+
+  pedestrians.forEach(p => {
+    p.x += p.vx;
+    p.y += p.vy - ego.speed * 0.008;
+    if (p.x < ROAD_LEFT) p.vx = Math.abs(p.vx);
+    if (p.x > ROAD_RIGHT) p.vx = -Math.abs(p.vx);
+  });
+  pedestrians = pedestrians.filter(p => p.y < H + 60 && p.y > -60);
+
+  // Traffic lights
+  trafficLights.forEach(tl => {
+    tl.timer--;
+    if (tl.timer <= 0) {
+      if (tl.state === 'GREEN') { tl.state = 'YELLOW'; tl.timer = 60; }
+      else if (tl.state === 'YELLOW') { tl.state = 'RED'; tl.timer = 200 + Math.random()*100; }
+      else { tl.state = 'GREEN'; tl.timer = 220 + Math.random()*100; }
+    }
+  });
+}
+
+// ── Drawing ──
+function drawRoad() {
+  // Road surface
+  ctx.fillStyle = '#151c27';
+  ctx.fillRect(ROAD_LEFT, 0, ROAD_W, H);
+
+  // Outer curbs
+  ctx.fillStyle = '#ff2244';
+  ctx.fillRect(ROAD_LEFT - 6, 0, 6, H);
+  ctx.fillRect(ROAD_RIGHT, 0, 6, H);
+
+  // Side strips
+  ctx.fillStyle = '#1e2d3d';
+  ctx.fillRect(0, 0, ROAD_LEFT - 6, H);
+  ctx.fillRect(ROAD_RIGHT + 6, 0, W - ROAD_RIGHT - 6, H);
+
+  // Background texture (grass/sidewalk)
+  ctx.fillStyle = '#0e1820';
+  ctx.fillRect(0, 0, ROAD_LEFT - 6, H);
+  ctx.fillRect(ROAD_RIGHT + 6, 0, W - ROAD_RIGHT - 6, H);
+
+  // Lane markings
+  for (let i = 1; i < LANES; i++) {
+    const lx = ROAD_LEFT + i * LANE_W;
+    ctx.strokeStyle = i === 2 ? '#3a4a5e' : '#2a3a50';
+    ctx.lineWidth = i === 2 ? 2 : 1;
+    ctx.setLineDash([30, 30]);
+    ctx.lineDashOffset = -roadOffset;
+    ctx.beginPath();
+    ctx.moveTo(lx, 0);
+    ctx.lineTo(lx, H);
+    ctx.stroke();
+  }
+  ctx.setLineDash([]);
+
+  // Edge lines
+  ctx.strokeStyle = '#ffffff22';
+  ctx.lineWidth = 1.5;
+  ctx.beginPath(); ctx.moveTo(ROAD_LEFT, 0); ctx.lineTo(ROAD_LEFT, H); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ROAD_RIGHT, 0); ctx.lineTo(ROAD_RIGHT, H); ctx.stroke();
+}
+
+function drawCar(x, y, w, h, color, brakes=false, iL=false, iR=false, isEgo=false) {
+  ctx.save();
+  ctx.translate(x, y);
+
+  // Shadow
+  ctx.shadowColor = color + '55';
+  ctx.shadowBlur = isEgo ? 18 : 8;
+
+  // Body
+  const g = ctx.createLinearGradient(-w/2, -h/2, w/2, h/2);
+  g.addColorStop(0, color);
+  g.addColorStop(1, color + 'aa');
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.roundRect(-w/2, -h/2, w, h, 5);
+  ctx.fill();
+
+  // Windshield
+  ctx.fillStyle = isEgo ? '#00d4ff33' : '#ffffff22';
+  ctx.beginPath();
+  ctx.roundRect(-w/2+3, -h/2+5, w-6, h/3, 2);
+  ctx.fill();
+
+  // Headlights
+  ctx.fillStyle = isEgo ? '#00d4ff' : '#ffffaa';
+  ctx.shadowColor = isEgo ? '#00d4ff' : '#ffffaa';
+  ctx.shadowBlur = 12;
+  ctx.beginPath(); ctx.arc(-w/2+3, -h/2+4, 2.5, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(w/2-3, -h/2+4, 2.5, 0, Math.PI*2); ctx.fill();
+
+  // Brake / tail lights
+  ctx.fillStyle = brakes ? '#ff2244' : '#ff224488';
+  ctx.shadowColor = '#ff2244';
+  ctx.shadowBlur = brakes ? 15 : 5;
+  ctx.beginPath(); ctx.arc(-w/2+3, h/2-4, 3, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(w/2-3, h/2-4, 3, 0, Math.PI*2); ctx.fill();
+
+  // Indicators
+  if (iL && (frames % 30 < 15)) {
+    ctx.fillStyle = '#ffcc00';
+    ctx.shadowColor = '#ffcc00';
+    ctx.shadowBlur = 14;
+    ctx.beginPath(); ctx.arc(-w/2-2, 0, 3, 0, Math.PI*2); ctx.fill();
+  }
+  if (iR && (frames % 30 < 15)) {
+    ctx.fillStyle = '#ffcc00';
+    ctx.shadowColor = '#ffcc00';
+    ctx.shadowBlur = 14;
+    ctx.beginPath(); ctx.arc(w/2+2, 0, 3, 0, Math.PI*2); ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+function drawSensors() {
+  if (!showSensors) return;
+  ctx.save();
+  ctx.globalAlpha = 0.18;
+
+  // Front sensor cone
+  const range = 160;
+  ctx.strokeStyle = '#00d4ff';
+  ctx.lineWidth = 1;
+  // Rays
+  for (let angle = -30; angle <= 30; angle += 10) {
+    const rad = angle * Math.PI / 180;
+    ctx.beginPath();
+    ctx.moveTo(ego.x, ego.y - ego.h/2);
+    ctx.lineTo(ego.x + Math.sin(rad)*range, ego.y - ego.h/2 - Math.cos(rad)*range);
+    ctx.stroke();
+  }
+  // Side sensors
+  ctx.strokeStyle = '#aa88ff';
+  if (ego.lane > 0) {
+    for (let dy = -30; dy <= 30; dy += 15) {
+      ctx.beginPath();
+      ctx.moveTo(ego.x - ego.w/2, ego.y + dy);
+      ctx.lineTo(ego.x - 80, ego.y + dy);
+      ctx.stroke();
+    }
+  }
+  if (ego.lane < LANES-1) {
+    for (let dy = -30; dy <= 30; dy += 15) {
+      ctx.beginPath();
+      ctx.moveTo(ego.x + ego.w/2, ego.y + dy);
+      ctx.lineTo(ego.x + 80, ego.y + dy);
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+}
+
+function drawTrafficLights() {
+  trafficLights.forEach(tl => {
+    ctx.save();
+    ctx.translate(tl.x, tl.y);
+    // Post
+    ctx.fillStyle = '#2a3a50';
+    ctx.fillRect(-3, -40, 6, 50);
+    // Box
+    ctx.fillStyle = '#111820';
+    ctx.strokeStyle = '#2a3a50';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.roundRect(-10, -40, 20, 36, 3); ctx.fill(); ctx.stroke();
+    // Lights
+    const cols = { RED:'#ff2244', YELLOW:'#ffcc00', GREEN:'#39ff14' };
+    ['RED','YELLOW','GREEN'].forEach((c,i) => {
+      ctx.beginPath();
+      ctx.arc(0, -30 + i*12, 5, 0, Math.PI*2);
+      ctx.fillStyle = tl.state === c ? cols[c] : cols[c]+'30';
+      if (tl.state === c) { ctx.shadowColor = cols[c]; ctx.shadowBlur = 15; }
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    });
+    ctx.restore();
+  });
+}
+
+function drawObstacles() {
+  obstacles.forEach(o => {
+    ctx.save();
+    ctx.translate(o.x, o.y);
+    ctx.fillStyle = '#ff660044';
+    ctx.strokeStyle = '#ff6600';
+    ctx.lineWidth = 1.5;
+    // Debris/box
+    ctx.beginPath();
+    ctx.roundRect(-o.w/2, -o.h/2, o.w, o.h, 3);
+    ctx.fill(); ctx.stroke();
+    // Hazard X
+    ctx.strokeStyle = '#ff6600';
+    ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(-6,-6); ctx.lineTo(6,6); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(6,-6); ctx.lineTo(-6,6); ctx.stroke();
+    ctx.restore();
+  });
+}
+
+function drawPedestrians() {
+  pedestrians.forEach(p => {
+    ctx.save();
+    ctx.translate(p.x, p.y);
+    ctx.fillStyle = p.color;
+    ctx.shadowColor = p.color;
+    ctx.shadowBlur = 10;
+    // Body
+    ctx.beginPath(); ctx.arc(0, -p.r/2, p.r*0.55, 0, Math.PI*2); ctx.fill(); // head
+    ctx.beginPath(); ctx.roundRect(-p.r*0.4, 0, p.r*0.8, p.r*1.2, 2); ctx.fill(); // body
+    ctx.restore();
+  });
+}
+
+function drawHUD() {
+  // Mini-map style lane indicator at bottom of canvas
+  ctx.save();
+  ctx.fillStyle = '#0d111888';
+  ctx.strokeStyle = '#1e2d3d';
+  ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.roundRect(W/2 - 70, H - 38, 140, 28, 4); ctx.fill(); ctx.stroke();
+
+  for (let i=0;i<LANES;i++) {
+    const lx = W/2 - 60 + i*30;
+    ctx.strokeStyle = i === ego.lane ? '#00d4ff' : '#2a3a50';
+    ctx.lineWidth = i === ego.lane ? 2 : 1;
+    ctx.beginPath(); ctx.moveTo(lx+15, H-34); ctx.lineTo(lx+15, H-14); ctx.stroke();
+    if (i === ego.lane) {
+      ctx.fillStyle = '#00d4ff';
+      ctx.shadowColor = '#00d4ff'; ctx.shadowBlur = 8;
+      ctx.beginPath(); ctx.roundRect(lx+8, H-30, 14, 12, 2); ctx.fill();
+      ctx.shadowBlur = 0;
+    }
+  }
+
+  ctx.fillStyle = '#ffffff44';
+  ctx.font = '9px Share Tech Mono, monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('LANE POSITION', W/2, H-4);
+  ctx.restore();
+}
+
+function updateUI() {
+  document.getElementById('speed-disp').textContent = Math.round(ego.speed);
+  const sv = document.getElementById('speed-disp');
+  sv.style.color = ego.speed < 30 ? '#ff2244' : ego.speed < 60 ? '#ffcc00' : '#00d4ff';
+
+  // Sensors
+  const setS = (id, val) => {
+    const el = document.getElementById(id);
+    el.textContent = val;
+    el.className = 'sensor-val ' + (val === 'CLEAR' || val === 'CENTER' ? 'active' : val === 'N/A' || val === '—' ? '' : 'alert');
+  };
+  setS('s-front', sensors.front);
+  setS('s-rear', sensors.rear);
+  setS('s-left', sensors.left);
+  setS('s-right', sensors.right);
+  setS('s-signal', sensors.signal);
+  setS('s-lane', sensors.lane);
+
+  // Stats
+  document.getElementById('stat-dist').textContent = `${Math.round(totalDist)} m`;
+  document.getElementById('stat-dec').textContent = decisionCount;
+  document.getElementById('stat-inc').textContent = incidents;
+  document.getElementById('stat-avg').textContent = `${Math.round(speedSamples > 0 ? speedSum/speedSamples : 0)} km/h`;
+
+  // Bottom bar
+  const mins = String(Math.floor(simTime/60)).padStart(2,'0');
+  const secs = String(Math.floor(simTime%60)).padStart(2,'0');
+  document.getElementById('sim-time').textContent = `${mins}:${secs}`;
+  document.getElementById('frame-count').textContent = frames;
+  document.getElementById('obj-count').textContent = npcCars.length + obstacles.length + pedestrians.length;
+}
+
+// ── Main Loop ──
+function loop() {
+  frames++;
+  simTime += 1/60;
+
+  // Clear
+  ctx.clearRect(0, 0, W, H);
+
+  // Draw scene
+  drawRoad();
+  drawTrafficLights();
+  drawObstacles();
+  drawPedestrians();
+
+  // Draw NPCs
+  npcCars.forEach(c => drawCar(c.x, c.y, c.w, c.h, c.color, false, false, false, false));
+
+  // Sensors
+  drawSensors();
+
+  // Perceive
+  const p = perceive();
+
+  // Decide
+  decide(p);
+
+  // Update physics
+  updateEgo();
+  updateNPCs();
+
+  // Draw ego
+  drawCar(ego.x, ego.y, ego.w, ego.h, ego.color, ego.brakeLights, ego.indicatorLeft, ego.indicatorRight, true);
+
+  // HUD
+  drawHUD();
+
+  // UI
+  updateUI();
+
+  requestAnimationFrame(loop);
+}
+
+// ── Init ──
+initLights();
+for (let i = 0; i < 5; i++) spawnNPC();
+ego.targetSpeed = 65;
+logDecision('SYSTEM ONLINE', 'Autonomous mode engaged', 'acc');
+logDecision('SENSORS ACTIVE', 'LIDAR / RADAR / VISION ready', 'signal');
+loop();
 </script>
 </body>
 </html>
