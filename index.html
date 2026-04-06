@@ -34,15 +34,23 @@ const ctx = canvas.getContext("2d");
 canvas.width = window.innerWidth - 300;
 canvas.height = window.innerHeight;
 
-let car = { x: canvas.width/2, y: canvas.height - 150, w: 30, h: 55, speed: 0, targetX: canvas.width/2 };
+let car = { x: canvas.width/2, y: canvas.height - 150, w: 30, h: 55, speed: 0, targetX: canvas.width/2, indicator: null };
 let obstacles = [];
+let light = "GREEN";
 let active = false;
+let frame = 0;
 
 function addObstacle() {
     let laneX = Math.random() > 0.5 ? canvas.width/2 - 50 : canvas.width/2 + 50;
-    obstacles.push({ x: laneX, y: -50 });
-    log("Obstacle detected by long-range radar!");
+    obstacles.push({ x: laneX, y: -100 });
+    log("OBSTACLE DETECTED: Recalculating path...");
 }
+
+// Cycle Traffic Light
+setInterval(() => {
+    light = (light === "GREEN") ? "RED" : "GREEN";
+    log("SIGNAL CHANGE: Light is now " + light);
+}, 8000);
 
 function log(msg) {
     let l = document.getElementById("log");
@@ -51,63 +59,68 @@ function log(msg) {
 
 function update() {
     if(!active) return;
+    frame++;
     ctx.clearRect(0,0,canvas.width, canvas.height);
 
-    // Draw Road
-    ctx.fillStyle = "#222";
+    // Draw Road & Grass
+    ctx.fillStyle = "#1b1b1b";
     ctx.fillRect(canvas.width/2 - 100, 0, 200, canvas.height);
-    ctx.strokeStyle = "#444";
-    ctx.setLineDash([20, 20]);
-    ctx.strokeRect(canvas.width/2 - 1, 0, 2, canvas.height);
+    
+    // Draw Traffic Light Visual
+    ctx.fillStyle = (light === "RED") ? "#ff4d4d" : "#2ecc71";
+    ctx.beginPath();
+    ctx.arc(canvas.width/2 + 120, 50, 15, 0, Math.PI*2);
+    ctx.fill();
 
-    // AI SENSING
-    let danger = false;
-    obstacles.forEach((ob, index) => {
-        ctx.fillStyle = "orange";
-        ctx.fillRect(ob.x - 15, ob.y - 15, 30, 30);
-        ob.y += 3; // Obstacles move down
-
-        // Collision detection (Sensor range)
-        let dist = car.y - ob.y;
-        if(Math.abs(ob.x - car.x) < 40 && dist < 180 && dist > 0) {
-            danger = true;
-        }
-        if(ob.y > canvas.height) obstacles.splice(index, 1);
-    });
+    // AI PERCEPTION
+    let distToLight = (light === "RED") ? car.y - 100 : 999;
+    let dangerAhead = obstacles.some(ob => Math.abs(ob.x - car.x) < 40 && (car.y - ob.y) < 200 && (car.y - ob.y) > 0);
 
     // AI DECISION ENGINE
-    if(danger) {
-        car.speed *= 0.9; // Slow down
-        document.getElementById("decision").innerText = "EVADING";
-        car.targetX = (car.x > canvas.width/2) ? canvas.width/2 - 50 : canvas.width/2 + 50;
+    if (distToLight < 150 || dangerAhead) {
+        car.speed *= 0.85; // Intelligent Braking
+        document.getElementById("decision").innerText = dangerAhead ? "AVOIDING COLLISION" : "STOPPING FOR SIGNAL";
+        
+        if (dangerAhead) {
+            let newTarget = (car.x > canvas.width/2) ? canvas.width/2 - 50 : canvas.width/2 + 50;
+            if (car.targetX !== newTarget) {
+                car.targetX = newTarget;
+                car.indicator = (car.targetX < car.x) ? "LEFT" : "RIGHT";
+            }
+        }
     } else {
-        if(car.speed < 5) car.speed += 0.1;
-        document.getElementById("decision").innerText = "CRUISING";
-        document.getElementById("status").innerText = "AUTONOMOUS";
+        if (car.speed < 4.5) car.speed += 0.1;
+        car.indicator = null;
+        document.getElementById("decision").innerText = "STABLE CRUISE";
     }
 
-    // Physics
-    car.x += (car.targetX - car.x) * 0.1; // Smooth steering
-    document.getElementById("speed").innerText = Math.round(car.speed * 20);
+    // Physics & Obstacle Loop
+    car.x += (car.targetX - car.x) * 0.08;
+    obstacles.forEach((ob, i) => {
+        ctx.fillStyle = "#e67e22";
+        ctx.fillRect(ob.x - 15, ob.y - 15, 30, 30);
+        ob.y += 2;
+        if(ob.y > canvas.height) obstacles.splice(i, 1);
+    });
 
-    // Draw Car & Sensors
+    // Draw Car
     ctx.fillStyle = "#66fcf1";
     ctx.fillRect(car.x - 15, car.y - 27, 30, 55);
-    
-    // Visualize "Radar Rays"
-    ctx.strokeStyle = danger ? "red" : "#66fcf133";
-    ctx.setLineDash([]);
-    ctx.beginPath();
-    ctx.moveTo(car.x, car.y);
-    ctx.lineTo(car.x, car.y - 180);
-    ctx.stroke();
 
+    // Draw Indicators (Visual HMI)
+    if (car.indicator && Math.floor(frame / 10) % 2 === 0) {
+        ctx.fillStyle = "yellow";
+        if (car.indicator === "LEFT") ctx.fillRect(car.x - 20, car.y - 25, 5, 10);
+        if (car.indicator === "RIGHT") ctx.fillRect(car.x + 15, car.y - 25, 5, 10);
+    }
+
+    document.getElementById("speed").innerText = Math.round(car.speed * 25);
     requestAnimationFrame(update);
 }
 
 function start() {
     active = true;
-    log("Autopilot engaged. Sensors active.");
+    log("AI MISSION STARTED.");
     update();
 }
 </script>
