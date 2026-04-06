@@ -1,136 +1,115 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Traffic Pro Simulator</title>
+    <title>AI Autonomous Pilot</title>
     <style>
-        body {
-            margin: 0;
-            background: #1a1a2e;
-            color: white;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            overflow: hidden;
-            display: flex;
-        }
-        #controls {
-            width: 300px;
-            padding: 20px;
-            background: #16213e;
-            border-right: 2px solid #0f3460;
-            height: 100vh;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-        }
-        canvas {
-            background: #242424;
-        }
-        .status-card {
-            background: #0f3460;
-            padding: 10px;
-            border-radius: 8px;
-            font-size: 0.9em;
-        }
-        .log {
-            flex-grow: 1;
-            background: black;
-            font-family: monospace;
-            padding: 10px;
-            font-size: 0.8em;
-            color: #4ef037;
-            overflow-y: auto;
-            border-radius: 5px;
-        }
-        button {
-            padding: 10px;
-            cursor: pointer;
-            background: #e94560;
-            border: none;
-            color: white;
-            font-weight: bold;
-            border-radius: 5px;
-        }
+        body { margin: 0; background: #0b0c10; color: #66fcf1; font-family: sans-serif; display: flex; overflow: hidden; }
+        #side { width: 300px; padding: 20px; background: #1f2833; border-right: 2px solid #45a29e; height: 100vh; box-sizing: border-box; }
+        canvas { background: #121212; flex-grow: 1; }
+        .stat { background: #0b0c10; padding: 10px; border-radius: 5px; margin-bottom: 10px; border-left: 3px solid #66fcf1; }
+        .log { height: 200px; background: black; padding: 10px; font-size: 12px; color: #45a29e; overflow-y: auto; border-radius: 5px; }
+        button { width: 100%; padding: 12px; background: #66fcf1; border: none; font-weight: bold; cursor: pointer; margin-top: 10px; }
     </style>
 </head>
 <body>
 
-<div id="controls">
-    <h2>AI Control Unit</h2>
-    <div class="status-card">
-        Speed: <span id="speedVal">0</span> km/h<br>
-        Decision: <span id="decisionVal">Idle</span><br>
-        Lane: <span id="laneVal">Center</span>
-    </div>
-    <div class="log" id="eventLog">
-        > System Initialized...<br>
-        > Waiting for Start...
-    </div>
-    <button onclick="startSimulation()">START SIMULATION</button>
-    <button onclick="addObstacle()" style="background: #0f3460;">DROP OBSTACLE</button>
+<div id="side">
+    <h2>AI PERCEPTION</h2>
+    <div class="stat">Status: <b id="status">OFFLINE</b></div>
+    <div class="stat">Decision: <b id="decision">WAITING</b></div>
+    <div class="stat">Speed: <b id="speed">0</b> km/h</div>
+    
+    <h3>SYSTEM LOG</h3>
+    <div class="log" id="log">> Initializing sensors...<br>> Ready.</div>
+    
+    <button onclick="start()">ENGAGE AUTOPILOT</button>
+    <button onclick="addObstacle()" style="background:#45a29e; color:white">SIMULATE OBSTACLE</button>
 </div>
 
-<canvas id="simCanvas"></canvas>
+<canvas id="road"></canvas>
 
 <script>
-    const canvas = document.getElementById("simCanvas");
-    const ctx = canvas.getContext("2d");
-    canvas.width = window.innerWidth - 300;
-    canvas.height = window.innerHeight;
+const canvas = document.getElementById("road");
+const ctx = canvas.getContext("2d");
+canvas.width = window.innerWidth - 300;
+canvas.height = window.innerHeight;
 
-    // Simulation Variables
-    let car = { x: canvas.width/2, y: canvas.height - 100, speed: 0, maxSpeed: 4, width: 30, height: 50 };
-    let obstacles = [];
-    let sensors = [];
+let car = { x: canvas.width/2, y: canvas.height - 150, w: 30, h: 55, speed: 0, targetX: canvas.width/2 };
+let obstacles = [];
+let active = false;
 
-    function drawRoad() {
-        ctx.fillStyle = "#333";
-        ctx.fillRect(canvas.width/2 - 100, 0, 200, canvas.height);
-        
-        // Lane Markings
-        ctx.strokeStyle = "white";
-        ctx.setLineDash([20, 20]);
-        ctx.beginPath();
-        ctx.moveTo(canvas.width/2, 0);
-        ctx.lineTo(canvas.width/2, canvas.height);
-        ctx.stroke();
+function addObstacle() {
+    let laneX = Math.random() > 0.5 ? canvas.width/2 - 50 : canvas.width/2 + 50;
+    obstacles.push({ x: laneX, y: -50 });
+    log("Obstacle detected by long-range radar!");
+}
+
+function log(msg) {
+    let l = document.getElementById("log");
+    l.innerHTML = `> ${msg}<br>` + l.innerHTML;
+}
+
+function update() {
+    if(!active) return;
+    ctx.clearRect(0,0,canvas.width, canvas.height);
+
+    // Draw Road
+    ctx.fillStyle = "#222";
+    ctx.fillRect(canvas.width/2 - 100, 0, 200, canvas.height);
+    ctx.strokeStyle = "#444";
+    ctx.setLineDash([20, 20]);
+    ctx.strokeRect(canvas.width/2 - 1, 0, 2, canvas.height);
+
+    // AI SENSING
+    let danger = false;
+    obstacles.forEach((ob, index) => {
+        ctx.fillStyle = "orange";
+        ctx.fillRect(ob.x - 15, ob.y - 15, 30, 30);
+        ob.y += 3; // Obstacles move down
+
+        // Collision detection (Sensor range)
+        let dist = car.y - ob.y;
+        if(Math.abs(ob.x - car.x) < 40 && dist < 180 && dist > 0) {
+            danger = true;
+        }
+        if(ob.y > canvas.height) obstacles.splice(index, 1);
+    });
+
+    // AI DECISION ENGINE
+    if(danger) {
+        car.speed *= 0.9; // Slow down
+        document.getElementById("decision").innerText = "EVADING";
+        car.targetX = (car.x > canvas.width/2) ? canvas.width/2 - 50 : canvas.width/2 + 50;
+    } else {
+        if(car.speed < 5) car.speed += 0.1;
+        document.getElementById("decision").innerText = "CRUISING";
+        document.getElementById("status").innerText = "AUTONOMOUS";
     }
 
-    function drawCar() {
-        ctx.fillStyle = "#e94560";
-        ctx.fillRect(car.x - car.width/2, car.y - car.height/2, car.width, car.height);
-        
-        // Draw Sensors (Visualizing the "Percept")
-        ctx.strokeStyle = "rgba(0, 255, 0, 0.5)";
-        ctx.setLineDash([]);
-        const sensorPoints = [-0.5, 0, 0.5]; // Left, Front, Right
-        sensorPoints.forEach(angle => {
-            ctx.beginPath();
-            ctx.moveTo(car.x, car.y);
-            ctx.lineTo(car.x + Math.sin(angle)*150, car.y - Math.cos(angle)*150);
-            ctx.stroke();
-        });
-    }
+    // Physics
+    car.x += (car.targetX - car.x) * 0.1; // Smooth steering
+    document.getElementById("speed").innerText = Math.round(car.speed * 20);
 
-    function update() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        drawRoad();
-        
-        // AI Logic Placeholder
-        if(car.speed < car.maxSpeed) car.speed += 0.05;
-        car.y -= car.speed;
+    // Draw Car & Sensors
+    ctx.fillStyle = "#66fcf1";
+    ctx.fillRect(car.x - 15, car.y - 27, 30, 55);
+    
+    // Visualize "Radar Rays"
+    ctx.strokeStyle = danger ? "red" : "#66fcf133";
+    ctx.setLineDash([]);
+    ctx.beginPath();
+    ctx.moveTo(car.x, car.y);
+    ctx.lineTo(car.x, car.y - 180);
+    ctx.stroke();
 
-        // Reset car to bottom for infinite loop feel
-        if(car.y < -50) car.y = canvas.height + 50;
+    requestAnimationFrame(update);
+}
 
-        drawCar();
-        requestAnimationFrame(update);
-    }
-
-    function startSimulation() {
-        update();
-        document.getElementById('eventLog').innerHTML += "<br>> Engine Started...";
-    }
+function start() {
+    active = true;
+    log("Autopilot engaged. Sensors active.");
+    update();
+}
 </script>
 </body>
 </html>
