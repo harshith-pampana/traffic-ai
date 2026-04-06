@@ -1,205 +1,171 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>AI Urban Command Center</title>
+    <title>AUTODRIVE AI // SIMULATION V2.0</title>
     <style>
-        body { margin: 0; background: #0b0c10; color: #66fcf1; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; overflow: hidden; }
-        #sidebar { width: 380px; padding: 20px; background: #1f2833; border-right: 3px solid #45a29e; height: 100vh; box-sizing: border-box; display: flex; flex-direction: column; gap: 15px; overflow-y: auto; }
-        canvas { background: #121212; flex-grow: 1; }
+        :root { --neon: #66fcf1; --dark: #0b0c10; --accent: #45a29e; --warn: #e94560; }
+        body { margin: 0; background: var(--dark); color: var(--neon); font-family: 'Segoe UI', sans-serif; display: flex; height: 100vh; overflow: hidden; }
         
-        .hud-panel { background: #0b0c10; padding: 15px; border-radius: 10px; border: 1px solid #45a29e; box-shadow: 0 0 15px rgba(102, 252, 241, 0.1); }
-        .hud-item { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 14px; border-bottom: 1px solid #1f2833; padding-bottom: 4px; }
-        .hud-val { color: #fff; font-weight: bold; }
+        /* Left HUD */
+        #left-hud { width: 320px; background: #1f2833; border-right: 2px solid var(--accent); padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .hud-module { background: var(--dark); border: 1px solid var(--accent); padding: 12px; border-radius: 4px; }
+        .label { font-size: 10px; text-transform: uppercase; color: var(--accent); margin-bottom: 5px; letter-spacing: 1px; }
+        .val { font-size: 18px; font-weight: bold; color: #fff; }
         
-        .control-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        button { padding: 12px; border: 1px solid #45a29e; border-radius: 5px; background: transparent; color: #66fcf1; cursor: pointer; font-weight: bold; transition: 0.3s; font-size: 11px; text-transform: uppercase; }
-        button:hover { background: #66fcf1; color: #0b0c10; box-shadow: 0 0 10px #66fcf1; }
-        .btn-active { background: #45a29e; color: white; }
+        /* Center Canvas */
+        #sim-container { flex-grow: 1; position: relative; background: #121212; display: flex; justify-content: center; }
+        canvas { background: #1a1a1a; box-shadow: 0 0 50px rgba(0,0,0,0.5); }
 
-        .log { flex-grow: 1; background: #000; padding: 10px; font-family: 'Courier New', monospace; font-size: 11px; color: #00ff00; border-radius: 5px; overflow-y: auto; border: 1px solid #1f2833; }
-        h2 { margin: 0; font-size: 1.2em; text-align: center; letter-spacing: 3px; color: #66fcf1; }
+        /* Right Control Panel */
+        #right-hud { width: 320px; background: #1f2833; border-left: 2px solid var(--accent); padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .control-btn { background: transparent; border: 1px solid var(--accent); color: var(--neon); padding: 10px; cursor: pointer; text-transform: uppercase; font-size: 11px; transition: 0.3s; }
+        .control-btn:hover { background: var(--neon); color: var(--dark); }
+        .log { flex-grow: 1; background: #000; font-family: monospace; font-size: 11px; padding: 10px; color: #0f0; overflow-y: auto; border: 1px solid #333; }
     </style>
 </head>
 <body>
 
-<div id="sidebar">
-    <h2>DASHBOARD HUD</h2>
-    
-    <div class="hud-panel">
-        <div class="hud-item">Decision: <span class="hud-val" id="decision">STANDBY</span></div>
-        <div class="hud-item">Speed: <span class="hud-val" id="speed">0</span> km/h</div>
-        <div class="hud-item">Lane Pos: <span class="hud-val" id="lane">CENTER</span></div>
-        <div class="hud-item">Sensors: <span class="hud-val" id="sensorStat">SCANNING</span></div>
+<div id="left-hud">
+    <h2 style="margin:0; font-style: italic;">AUTODRIVE <span style="color:#fff">AI</span></h2>
+    <div class="hud-module">
+        <div class="label">Current Decision</div>
+        <div class="val" id="decision">INITIALIZING...</div>
     </div>
-
-    <h2>SCENARIO CONTROLS</h2>
-    <div class="control-grid">
-        <button onclick="start()">Engage AI</button>
-        <button onclick="addObstacle()">Add Obstacle</button>
-        <button onclick="addPedestrian()">Add Pedestrian</button>
-        <button onclick="forceRedLight()">Force Red Light</button>
+    <div class="hud-module">
+        <div class="label">Trip Stats</div>
+        <div style="font-size: 12px;">Distance: <span id="dist">0</span> m</div>
+        <div style="font-size: 12px;">Decisions: <span id="dec-count">0</span></div>
+        <div style="font-size: 12px;">Incidents: <span id="incidents" style="color:var(--warn)">0</span></div>
     </div>
-
-    <div class="log" id="log">> Neural Link Established...</div>
+    <div class="hud-module">
+        <div class="label">Sensor Readings</div>
+        <div id="sensor-grid" style="display:grid; grid-template-columns: 1fr 1fr; gap:5px; font-size:10px;">
+            <div id="s-front">FRONT: CLEAR</div>
+            <div id="s-rear">REAR: CLEAR</div>
+            <div id="s-left">LEFT: CLEAR</div>
+            <div id="s-right">RIGHT: CLEAR</div>
+        </div>
+    </div>
 </div>
 
-<canvas id="cityCanvas"></canvas>
+<div id="sim-container">
+    <canvas id="road"></canvas>
+</div>
+
+<div id="right-hud">
+    <div class="label">Scenario Controls</div>
+    <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+        <button class="control-btn" onclick="spawnEntity('obs')">+ Obstacle</button>
+        <button class="control-btn" onclick="spawnEntity('ped')">+ Person</button>
+        <button class="control-btn" onclick="toggleLight()">Toggle Light</button>
+        <button class="control-btn" onclick="location.reload()">Reset Sim</button>
+    </div>
+    <div class="label">Decision Log</div>
+    <div class="log" id="log"></div>
+    <button id="start-btn" style="background:var(--neon); color:#000; font-weight:bold; padding:15px; border:none; cursor:pointer;" onclick="engage()">ENGAGE AUTO-PILOT</button>
+</div>
 
 <script>
-const canvas = document.getElementById("cityCanvas");
+const canvas = document.getElementById("road");
 const ctx = canvas.getContext("2d");
-canvas.width = window.innerWidth - 380;
+canvas.width = 500;
 canvas.height = window.innerHeight;
 
-let worldScroll = 0;
+let worldY = 0;
 let active = false;
-let frame = 0;
+let ego = { x: 250, y: canvas.height - 150, speed: 0, targetX: 250, totalDist: 0, decisions: 0 };
+let entities = [];
+let lightState = "GREEN";
+let lanes = [150, 250, 350];
 
-// Configurations
-const roadW = 160;
-const junctionGap = 700;
-let ego = { x: canvas.width/2, y: canvas.height - 200, w: 30, h: 60, speed: 0, targetX: canvas.width/2 };
-let junctions = [
-    { worldY: 100, state: "GREEN", timer: 0 },
-    { worldY: 100 - junctionGap, state: "RED", timer: 150 }
-];
-let entities = []; // Combined array for cross-cars and pedestrians
-
-function log(m) { 
+function log(msg) {
     const l = document.getElementById("log");
-    l.innerHTML = `> ${m}<br>` + l.innerHTML; 
+    l.innerHTML = `<span style="color:#45a29e">[${new Date().toLocaleTimeString([], {hour12:false})}]</span> ${msg}<br>` + l.innerHTML;
 }
 
-function forceRedLight() {
-    junctions.forEach(j => { j.state = "RED"; j.timer = 0; });
-    log("MANUAL OVERRIDE: All lights RED");
+function spawnEntity(type) {
+    let lane = lanes[Math.floor(Math.random() * lanes.length)];
+    entities.push({ type, x: lane, y: -50, speed: type === 'ped' ? 1.5 : 0 });
+    log(`DEPLOYED: ${type.toUpperCase()} at Lane ${lanes.indexOf(lane) + 1}`);
 }
 
-function addObstacle() {
-    entities.push({ type: 'obs', x: canvas.width/2 + (Math.random() > 0.5 ? 40 : -40), y: -100, speed: 2 });
-    log("SCENARIO: Deployed road hazard.");
+function toggleLight() {
+    lightState = lightState === "GREEN" ? "RED" : "GREEN";
+    log(`SIGNAL: Switched to ${lightState}`);
 }
 
-function addPedestrian() {
-    entities.push({ type: 'ped', x: -20, y: 150, speed: 1.5 });
-    log("SCENARIO: Pedestrian entering crosswalk.");
-}
-
-function drawVehicle(x, y, w, h, color, isEgo=false) {
-    ctx.save();
-    ctx.translate(x, y);
+function drawCar(x, y, color, isEgo=false) {
     ctx.fillStyle = color;
-    ctx.fillRect(-w/2, -h/2, w, h);
-    ctx.fillStyle = "rgba(0,0,0,0.6)"; // Windows
-    ctx.fillRect(-w/2 + 4, -h/2 + 8, w - 8, 12);
+    ctx.fillRect(x - 18, y - 35, 36, 70);
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.fillRect(x - 14, y - 25, 28, 15); // Windshield
     if(isEgo) {
-        ctx.strokeStyle = "#66fcf1"; ctx.lineWidth = 2;
-        ctx.strokeRect(-w/2 - 2, -h/2 - 2, w + 4, h + 4);
+        // Draw LIDAR Rays
+        ctx.strokeStyle = "rgba(102, 252, 241, 0.3)";
+        for(let i = -0.5; i <= 0.5; i += 0.2) {
+            ctx.beginPath();
+            ctx.moveTo(x, y - 30);
+            ctx.lineTo(x + (i * 100), y - 200);
+            ctx.stroke();
+        }
     }
-    ctx.restore();
 }
 
 function update() {
     if(!active) return;
     ctx.clearRect(0,0,canvas.width, canvas.height);
-    worldScroll += ego.speed;
-    frame++;
+    worldY += ego.speed;
+    ego.totalDist += ego.speed * 0.1;
 
-    let roadX = canvas.width/2 - roadW/2;
-
-    // DRAW CITY
-    ctx.fillStyle = "#1f2833"; ctx.fillRect(0,0,canvas.width, canvas.height); // Ground
-    ctx.fillStyle = "#0b0c10"; ctx.fillRect(roadX, 0, roadW, canvas.height); // Road
-    
-    // Lane Marking
-    ctx.strokeStyle = "#45a29e"; ctx.setLineDash([30, 30]);
-    ctx.beginPath(); ctx.moveTo(canvas.width/2, 0); ctx.lineTo(canvas.width/2, canvas.height); ctx.stroke();
-
-    let collisionAlert = false;
-    let lightStop = false;
-
-    // JUNCTION LOOP
-    junctions.forEach((j, idx) => {
-        let loopSize = junctionGap * 2;
-        let localY = (( (j.worldY + worldScroll) % loopSize) + loopSize) % loopSize;
-        
-        // Draw Crossing Road
-        ctx.setLineDash([]);
-        ctx.fillStyle = "#0b0c10";
-        ctx.fillRect(0, localY - 60, canvas.width, 120);
-
-        // Light Logic
-        j.timer++;
-        if(j.timer > 400) { j.state = (j.state === "GREEN" ? "RED" : "GREEN"); j.timer = 0; }
-        
-        // Visual Lights
-        ctx.fillStyle = "#1f2833"; ctx.fillRect(roadX + roadW + 10, localY - 45, 30, 90);
-        ctx.fillStyle = j.state === "RED" ? "#ff0000" : "#222";
-        ctx.beginPath(); ctx.arc(roadX + roadW + 25, localY - 25, 10, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = j.state === "GREEN" ? "#00ff00" : "#222";
-        ctx.beginPath(); ctx.arc(roadX + roadW + 25, localY + 20, 10, 0, Math.PI*2); ctx.fill();
-
-        // AI Perception: Junction Traffic
-        if(j.state === "RED" && localY > ego.y - 180 && localY < ego.y) lightStop = true;
-
-        // Auto-spawn cross traffic ONLY in lanes
-        if(j.state === "RED" && frame % 150 === 0) {
-            let dir = Math.random() > 0.5 ? 1 : -1;
-            entities.push({ type: 'car', x: dir > 0 ? -50 : canvas.width + 50, y: localY + (dir * 30), speed: dir * 3.5 });
-        }
+    // Road Drawing
+    ctx.fillStyle = "#222"; ctx.fillRect(100, 0, 300, canvas.height);
+    ctx.strokeStyle = "#444"; ctx.setLineDash([20, 20]);
+    [100, 200, 300, 400].forEach(lx => {
+        ctx.beginPath(); ctx.moveTo(lx, 0); ctx.lineTo(lx, canvas.height); ctx.stroke();
     });
 
-    // ENTITY PROCESSING
-    entities.forEach((en, index) => {
-        if(en.type === 'car') {
-            drawVehicle(en.x, en.y, 60, 32, "#e94560");
-            en.x += en.speed;
-        } else if(en.type === 'obs') {
-            ctx.fillStyle = "#f9a825"; ctx.fillRect(en.x - 15, en.y - 15, 30, 30);
-            en.y += ego.speed + 1; // Obstacles stay on road
-            if(Math.abs(en.x - ego.x) < 40 && (ego.y - en.y) < 200 && (ego.y - en.y) > 0) collisionAlert = true;
-        } else if(en.type === 'ped') {
-            ctx.fillStyle = "#fff"; ctx.beginPath(); ctx.arc(en.x, en.y, 8, 0, Math.PI*2); ctx.fill(); // Stickman head
-            ctx.fillRect(en.x-2, en.y, 4, 15); // body
-            en.x += en.speed;
-            if(en.x > roadX && en.x < roadX + roadW && Math.abs(ego.y - en.y) < 200) collisionAlert = true;
-        }
-        if(en.x < -100 || en.x > canvas.width + 100 || en.y > canvas.height + 100) entities.splice(index, 1);
+    let hazardAhead = false;
+    entities.forEach((en, i) => {
+        let localY = en.y + (en.speed === 0 ? worldY : 0); // Static vs moving
+        if(en.type === 'obs') ctx.fillStyle = "#ff9800";
+        else ctx.fillStyle = "#e91e63";
+        
+        ctx.fillRect(en.x - 15, (en.y % canvas.height), 30, 30);
+        en.y += 2; // Falling speed
+
+        if(Math.abs(en.x - ego.x) < 40 && en.y > 200 && en.y < ego.y) hazardAhead = true;
     });
 
-    // AI DECISION ENGINE
-    if(lightStop || collisionAlert) {
-        ego.speed *= 0.92;
-        document.getElementById("decision").innerText = lightStop ? "SIGNAL STOP" : "EVADING HAZARD";
-        if(collisionAlert && !lightStop) {
-            ego.targetX = (ego.x > canvas.width/2) ? canvas.width/2 - 45 : canvas.width/2 + 45;
+    // AI DECISION LOGIC
+    if(hazardAhead || lightState === "RED") {
+        ego.speed *= 0.95;
+        document.getElementById("decision").innerText = hazardAhead ? "EVASIVE BRAKING" : "SIGNAL STOP";
+        if(hazardAhead) {
+             ego.targetX = ego.x < 250 ? 350 : 150; // Simple lane change
+             ego.decisions++;
         }
     } else {
-        if(ego.speed < 4.5) ego.speed += 0.08;
-        ego.targetX = canvas.width/2;
-        document.getElementById("decision").innerText = "CRUISING";
+        if(ego.speed < 5) ego.speed += 0.1;
+        ego.targetX = 250;
+        document.getElementById("decision").innerText = "CRUISING_L1";
     }
 
-    // SMOOTHING
-    ego.x += (ego.targetX - ego.x) * 0.1;
-    let laneLabel = ego.x < canvas.width/2 - 20 ? "LEFT" : (ego.x > canvas.width/2 + 20 ? "RIGHT" : "CENTER");
-    
-    // HUD UPDATE
-    document.getElementById("speed").innerText = Math.round(ego.speed * 22);
-    document.getElementById("lane").innerText = laneLabel;
+    ego.x += (ego.targetX - ego.x) * 0.05;
 
-    // DRAW EGO
-    drawVehicle(ego.x, ego.y, ego.w, ego.h, "#66fcf1", true);
-    
-    // Sensor Rays
-    ctx.strokeStyle = (lightStop || collisionAlert) ? "red" : "rgba(102, 252, 241, 0.2)";
-    ctx.setLineDash([5, 5]);
-    ctx.strokeRect(ego.x - 20, ego.y - 200, 40, 200);
+    // UI Updates
+    document.getElementById("dist").innerText = Math.round(ego.totalDist);
+    document.getElementById("dec-count").innerText = ego.decisions;
 
+    drawCar(ego.x, ego.y, "#66fcf1", true);
     requestAnimationFrame(update);
 }
 
-function start() { active = true; log("URBAN AI INITIALIZED."); update(); }
+function engage() {
+    active = true;
+    document.getElementById("start-btn").style.display = "none";
+    log("SYSTEM: AI Autopilot Engaged");
+    update();
+}
 </script>
 </body>
 </html>
