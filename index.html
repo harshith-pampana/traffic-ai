@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Traffic Pro Simulator</title>
+    <style>
+        body {
+            margin: 0;
+            background: #1a1a2e;
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            overflow: hidden;
+            display: flex;
+        }
+        #controls {
+            width: 300px;
+            padding: 20px;
+            background: #16213e;
+            border-right: 2px solid #0f3460;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        canvas {
+            background: #242424;
+        }
+        .status-card {
+            background: #0f3460;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.9em;
+        }
+        .log {
+            flex-grow: 1;
+            background: black;
+            font-family: monospace;
+            padding: 10px;
+            font-size: 0.8em;
+            color: #4ef037;
+            overflow-y: auto;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px;
+            cursor: pointer;
+            background: #e94560;
+            border: none;
+            color: white;
+            font-weight: bold;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+
+<div id="controls">
+    <h2>AI Control Unit</h2>
+    <div class="status-card">
+        Speed: <span id="speedVal">0</span> km/h<br>
+        Decision: <span id="decisionVal">Idle</span><br>
+        Lane: <span id="laneVal">Center</span>
+    </div>
+    <div class="log" id="eventLog">
+        > System Initialized...<br>
+        > Waiting for Start...
+    </div>
+    <button onclick="startSimulation()">START SIMULATION</button>
+    <button onclick="addObstacle()" style="background: #0f3460;">DROP OBSTACLE</button>
+</div>
+
+<canvas id="simCanvas"></canvas>
+
+<script>
+    const canvas = document.getElementById("simCanvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth - 300;
+    canvas.height = window.innerHeight;
+
+    // Simulation Variables
+    let car = { x: canvas.width/2, y: canvas.height - 100, speed: 0, maxSpeed: 4, width: 30, height: 50 };
+    let obstacles = [];
+    let sensors = [];
+
+    function drawRoad() {
+        ctx.fillStyle = "#333";
+        ctx.fillRect(canvas.width/2 - 100, 0, 200, canvas.height);
+        
+        // Lane Markings
+        ctx.strokeStyle = "white";
+        ctx.setLineDash([20, 20]);
+        ctx.beginPath();
+        ctx.moveTo(canvas.width/2, 0);
+        ctx.lineTo(canvas.width/2, canvas.height);
+        ctx.stroke();
+    }
+
+    function drawCar() {
+        ctx.fillStyle = "#e94560";
+        ctx.fillRect(car.x - car.width/2, car.y - car.height/2, car.width, car.height);
+        
+        // Draw Sensors (Visualizing the "Percept")
+        ctx.strokeStyle = "rgba(0, 255, 0, 0.5)";
+        ctx.setLineDash([]);
+        const sensorPoints = [-0.5, 0, 0.5]; // Left, Front, Right
+        sensorPoints.forEach(angle => {
+            ctx.beginPath();
+            ctx.moveTo(car.x, car.y);
+            ctx.lineTo(car.x + Math.sin(angle)*150, car.y - Math.cos(angle)*150);
+            ctx.stroke();
+        });
+    }
+
+    function update() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        drawRoad();
+        
+        // AI Logic Placeholder
+        if(car.speed < car.maxSpeed) car.speed += 0.05;
+        car.y -= car.speed;
+
+        // Reset car to bottom for infinite loop feel
+        if(car.y < -50) car.y = canvas.height + 50;
+
+        drawCar();
+        requestAnimationFrame(update);
+    }
+
+    function startSimulation() {
+        update();
+        document.getElementById('eventLog').innerHTML += "<br>> Engine Started...";
+    }
+</script>
+</body>
+</html>
